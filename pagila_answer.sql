@@ -5,7 +5,6 @@ GROUP BY c.name
 ORDER BY COUNT(f.film_id) DESC
 
 
-
 SELECT a.first_name, a.last_name, COUNT(r.rental_id)
 FROM actor AS a
 JOIN film_actor AS fa ON a.actor_id=fa.actor_id
@@ -15,8 +14,6 @@ JOIN rental AS r ON r.inventory_id=r.rental_id
 GROUP BY a.first_name, a.last_name
 ORDER BY SUM(r.rental_id) DESC
 LIMIT 10
-
-
 
 SELECT c.name, SUM(p.amount)
 FROM category AS c
@@ -29,31 +26,37 @@ GROUP BY c.name
 ORDER BY SUM(p.amount) DESC
 LIMIT 1
 
-
-
 SELECT f.title
 FROM film AS f
-LEFT JOIN inventory AS i ON f.film_id = i.film_id
-WHERE i.film_id IS NULL
+WHERE EXISTS (
+SELECT * 
+FROM inventory AS i
+WHERE f.film_id = i.film_id
+)
 
 
+SELECT first_name, last_name, appearance_count
+FROM (
+  SELECT a.first_name, a.last_name, COUNT(*) AS appearance_count,
+         RANK() OVER (ORDER BY COUNT(*) DESC) AS num_rank
+  FROM actor AS a
+  JOIN film_actor fa ON a.actor_id = fa.actor_id
+  JOIN film f ON fa.film_id = f.film_id
+  JOIN film_category fc ON f.film_id = fc.film_id
+  JOIN category c ON fc.category_id = c.category_id
+  WHERE c.name = 'Children'
+  GROUP BY a.actor_id
+) AS t1
+WHERE num_rank <= 3
 
-WITH t1 AS (SELECT a.first_name, a.last_name, COUNT(c.name) AS total
+
+SELECT a.first_name, a.last_name, rank() OVER (PARTITION BY a.first_name, a.last_name ORDER BY COUNT(c.name) DESC) AS total
 FROM actor AS a
 JOIN film_actor AS fa ON fa.actor_id=a.actor_id
 JOIN film_category AS fc ON fa.film_id=fc.film_id
 JOIN category AS c ON fc.category_id=c.category_id
 GROUP BY a.first_name, a.last_name, c.name
 HAVING c.name='Children'
-ORDER BY COUNT(c.name) DESC)
-SELECT first_name, last_name, total
-FROM t1
-WHERE total IN (
-SELECT total
-FROM t1
-ORDER BY total DESC
-LIMIT 3
-)
 
 
 
@@ -62,8 +65,6 @@ FROM customer AS cus
 JOIN address AS a ON a.address_id=cus.address_id
 JOIN city AS c ON c.city_id=a.city_id
 GROUP BY c.city
-
-
 
 WITH t1 AS (SELECT cat.name, SUM(f.rental_duration) AS total, c.city
 FROM category AS cat
@@ -76,13 +77,12 @@ JOIN address AS a ON a.address_id=cus.address_id
 JOIN city AS c ON c.city_id=a.city_id
 GROUP BY cat.name, c.city
 ORDER BY SUM(f.rental_duration) DESC)
-SELECT *
+(SELECT *
 FROM t1 
-WHERE city LIKE 'A%'
+WHERE city LIKE 'A%')
 UNION 
-SELECT *
+(SELECT *
 FROM t1 
-WHERE city LIKE '%-%'
-GROUP BY t1.total, t1.name, t1.city
+WHERE city LIKE '%-%')
 
 

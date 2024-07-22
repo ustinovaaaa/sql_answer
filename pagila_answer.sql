@@ -28,7 +28,7 @@ LIMIT 1
 
 SELECT f.title
 FROM film AS f
-WHERE EXISTS (
+WHERE NOT EXISTS (
 SELECT * 
 FROM inventory AS i
 WHERE f.film_id = i.film_id
